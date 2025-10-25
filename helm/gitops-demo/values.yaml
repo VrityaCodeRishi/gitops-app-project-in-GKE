@@ -1,13 +1,11 @@
 nameOverride: ""
 fullnameOverride: ""
-
 imagePullSecrets: []
-
 frontend:
   replicaCount: 2
   image:
-    repository: ghcr.io/example/gitops-frontend
-    tag: latest
+    repository: ghcr.io/vrityacoderishi/gitops-demo-frontend
+    tag: 0c4fde15f159f32aec4abaad30ae5833257e2b72
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -16,12 +14,11 @@ frontend:
   nodeSelector: {}
   tolerations: []
   affinity: {}
-
 backend:
   replicaCount: 2
   image:
-    repository: ghcr.io/example/gitops-backend
-    tag: latest
+    repository: ghcr.io/vrityacoderishi/gitops-demo-backend
+    tag: 0c4fde15f159f32aec4abaad30ae5833257e2b72
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -40,7 +37,6 @@ backend:
   nodeSelector: {}
   tolerations: []
   affinity: {}
-
 postgres:
   enabled: true
   image:
@@ -56,7 +52,6 @@ postgres:
   nodeSelector: {}
   tolerations: []
   affinity: {}
-
 ingress:
   enabled: true
   className: ""
