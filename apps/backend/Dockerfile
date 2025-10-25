@@ -9,3 +9,4 @@ COPY src ./src
 
 EXPOSE 8080
 CMD ["npm", "start"]
+
