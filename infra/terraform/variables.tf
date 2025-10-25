@@ -108,6 +108,7 @@ variable "artifact_registry_repository" {
 variable "gitops_repo_url" {
   description = "Git repository URL that Argo CD will track for the application"
   type        = string
+  default     = "https://github.com/VrityaCodeRishi/gitops-app-project-in-GKE.git"
 }
 
 variable "gitops_repo_revision" {

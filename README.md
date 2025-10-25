@@ -35,6 +35,7 @@ docker build -t ghcr.io/YOUR_ORG/gitops-demo-backend:dev apps/backend
 ```
 
 Push the images to your registry of choice (GHCR is assumed in the workflow).
+Container registry repository names must be lowercase; the GitHub Actions workflow normalizes the GitHub owner name accordingly.
 
 ## Helm Chart
 
@@ -113,7 +114,7 @@ Terraform installs Argo CD via the official Helm chart (`helm_release.argocd`) o
 - `argocd_server_service_type` – Service type for the Argo CD API/server (`ClusterIP`, `LoadBalancer`, etc.).
 - `argocd_image_repository` / `argocd_image_tag` – Override the Argo CD controller image. Leave unset to let the chart pull its latest defaults.
 - `argocd_additional_values` – Extra YAML documents merged into the Helm chart values for advanced tuning.
-- `gitops_repo_url` – Git repository Argo CD will sync (required).
+- `gitops_repo_url` – Git repository Argo CD will sync (defaults to `https://github.com/VrityaCodeRishi/gitops-app-project-in-GKE.git`).
 - `gitops_repo_revision` – Branch/tag/commit to track (default `main`).
 - `artifact_registry_location` / `artifact_registry_repository` – Where Terraform creates the Artifact Registry Docker repo.
 

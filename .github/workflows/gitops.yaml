@@ -14,8 +14,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  FRONTEND_IMAGE_NAME: ${{ github.repository_owner }}/gitops-demo-frontend
-  BACKEND_IMAGE_NAME: ${{ github.repository_owner }}/gitops-demo-backend
+  FRONTEND_IMAGE_NAME: ${{ toLower(format('{0}/gitops-demo-frontend', github.repository_owner)) }}
+  BACKEND_IMAGE_NAME: ${{ toLower(format('{0}/gitops-demo-backend', github.repository_owner)) }}
 
 jobs:
   lint:
