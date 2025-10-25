@@ -116,3 +116,15 @@ variable "gitops_repo_revision" {
   type        = string
   default     = "main"
 }
+
+variable "enable_monitoring" {
+  description = "Toggle to deploy the monitoring stack through Argo CD"
+  type        = bool
+  default     = true
+}
+
+variable "monitoring_namespace" {
+  description = "Namespace where the monitoring stack (Prometheus/Loki/Grafana Alloy) will be deployed"
+  type        = string
+  default     = "monitoring"
+}
