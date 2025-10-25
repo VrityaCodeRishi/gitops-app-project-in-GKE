@@ -28,6 +28,11 @@ spec:
             - name: http
               containerPort: 80
               protocol: TCP
+          env:
+            - name: BACKEND_SERVICE_HOST
+              value: {{ include "gitops-demo.fullname" . }}-backend
+            - name: BACKEND_SERVICE_PORT
+              value: "{{ .Values.backend.service.port }}"
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
       {{- with .Values.frontend.nodeSelector }}

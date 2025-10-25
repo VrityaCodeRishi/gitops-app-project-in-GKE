@@ -5,6 +5,9 @@ services:
     build: ./apps/frontend
     ports:
       - "3000:80"
+    environment:
+      BACKEND_SERVICE_HOST: backend
+      BACKEND_SERVICE_PORT: 8080
     depends_on:
       - backend
   backend:
