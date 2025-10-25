@@ -1,0 +1,99 @@
+name: build-and-gitops
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/**"
+      - "helm/**"
+      - ".github/workflows/gitops.yaml"
+  pull_request:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  FRONTEND_IMAGE_NAME: ${{ github.repository_owner }}/gitops-demo-frontend
+  BACKEND_IMAGE_NAME: ${{ github.repository_owner }}/gitops-demo-backend
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: apps/backend
+      - name: Helm lint
+        uses: azure/setup-helm@v4
+      - name: Run helm lint
+        run: helm lint helm/gitops-demo
+
+  build-and-push:
+    needs: lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push frontend image
+        id: build-frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/frontend
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+      - name: Build and push backend image
+        id: build-backend
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/backend
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+      - name: Install yq
+        if: github.ref == 'refs/heads/main'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Update Helm values with new image tags
+        if: github.ref == 'refs/heads/main'
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          FRONTEND_IMAGE_NAME: ${{ env.FRONTEND_IMAGE_NAME }}
+          BACKEND_IMAGE_NAME: ${{ env.BACKEND_IMAGE_NAME }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          yq eval ".frontend.image.repository = \"${REGISTRY}/${FRONTEND_IMAGE_NAME}\"" -i helm/gitops-demo/values.yaml
+          yq eval ".frontend.image.tag = \"${GIT_SHA}\"" -i helm/gitops-demo/values.yaml
+          yq eval ".backend.image.repository = \"${REGISTRY}/${BACKEND_IMAGE_NAME}\"" -i helm/gitops-demo/values.yaml
+          yq eval ".backend.image.tag = \"${GIT_SHA}\"" -i helm/gitops-demo/values.yaml
+      - name: Create GitOps update pull request
+        if: github.ref == 'refs/heads/main'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "ci: update image tags to ${{ github.sha }}"
+          branch: chore/update-image-tags
+          delete-branch: true
+          title: "Update image tags to ${{ github.sha }}"
+          body: |
+            - Update chart image references to the images built from ${{ github.sha }}.
+            - Trigger Argo CD sync to roll out the new release once merged.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

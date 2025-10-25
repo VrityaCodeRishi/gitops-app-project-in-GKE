@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitOps Demo App</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      body {
+        margin: 0;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f3f4f6 0%, #d9e4f5 45%, #cfe0fc 100%);
+        color: #1f2933;
+      }
+      main {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 16px;
+        padding: 2.5rem 3rem;
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15);
+        text-align: center;
+        max-width: 520px;
+      }
+      h1 {
+        font-size: 2.25rem;
+        margin-bottom: 1rem;
+      }
+      p {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+      }
+      .status {
+        font-family: "Courier New", Courier, monospace;
+        background: #0b3d91;
+        color: #fff;
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        display: inline-block;
+        min-width: 260px;
+      }
+      footer {
+        margin-top: 2rem;
+        font-size: 0.9rem;
+        color: #475569;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>GitOps Demo</h1>
+      <p>
+        This frontend is served from a container image managed via GitOps. The
+        backend API lives under <code>/api</code> on the same host.
+      </p>
+      <div id="status" class="status">Loading status…</div>
+      <footer>
+        Managed with Helm, Argo CD, GitHub Actions, Terraform &amp; GKE.
+      </footer>
+    </main>
+    <script>
+      async function fetchStatus() {
+        const el = document.getElementById('status');
+        try {
+          const response = await fetch('/api/message');
+          if (!response.ok) {
+            throw new Error('Backend unavailable');
+          }
+          const data = await response.json();
+          el.textContent = data.message || JSON.stringify(data);
+        } catch (error) {
+          el.textContent = `Error: ${error.message}`;
+        }
+      }
+      fetchStatus();
+      setInterval(fetchStatus, 15000);
+    </script>
+  </body>
+</html>

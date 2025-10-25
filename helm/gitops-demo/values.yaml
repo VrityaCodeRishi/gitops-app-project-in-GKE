@@ -1,0 +1,68 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/example/gitops-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+backend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/example/gitops-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  env:
+    extra: []
+  database:
+    host: ""
+    port: 5432
+    name: appdb
+    user: appuser
+    password: applocal
+    existingSecret: ""
+    secretName: gitops-demo-backend-db
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 16-alpine
+    pullPolicy: IfNotPresent
+  storage:
+    size: 1Gi
+    className: ""
+  service:
+    port: 5432
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  hosts:
+    - host: demo.example.com
+      frontendPath: /
+      backendPath: /api
+  tls: []

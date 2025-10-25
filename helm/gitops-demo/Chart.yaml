@@ -1,0 +1,5 @@
+apiVersion: v2
+name: gitops-demo
+version: 0.1.0
+appVersion: "1.0.0"
+description: Helm chart for the GitOps demo multi-tier application (frontend, backend, database)

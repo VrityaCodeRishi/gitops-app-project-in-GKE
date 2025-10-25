@@ -1,0 +1,18 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gitops-demo.fullname" . }}-postgres
+  labels:
+    {{- include "gitops-demo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: {{ include "gitops-demo.fullname" . }}-postgres
+  ports:
+    - name: tcp
+      port: {{ .Values.postgres.service.port }}
+      targetPort: tcp
+      protocol: TCP
+{{- end }}
