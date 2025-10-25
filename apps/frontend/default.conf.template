@@ -1,7 +1,3 @@
-upstream backend_upstream {
-    server ${BACKEND_SERVICE_HOST}:${BACKEND_SERVICE_PORT};
-}
-
 server {
     listen 80;
     server_name _;
@@ -10,14 +6,14 @@ server {
     index index.html;
 
     location /api/ {
-        proxy_pass http://backend_upstream/;
+        proxy_pass http://${BACKEND_SERVICE_HOST}:${BACKEND_SERVICE_PORT}/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
     location /api {
-        proxy_pass http://backend_upstream;
+        proxy_pass http://${BACKEND_SERVICE_HOST}:${BACKEND_SERVICE_PORT};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
