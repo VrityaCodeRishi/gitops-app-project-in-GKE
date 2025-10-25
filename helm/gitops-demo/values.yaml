@@ -5,7 +5,7 @@ frontend:
   replicaCount: 2
   image:
     repository: ghcr.io/vrityacoderishi/gitops-demo-frontend
-    tag: e99c4412e786145a9d901aee2fa6480a4b0f6b7d
+    tag: 91e7acd8523fe27bc877ded735a5d65514c27a55
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -18,7 +18,7 @@ backend:
   replicaCount: 2
   image:
     repository: ghcr.io/vrityacoderishi/gitops-demo-backend
-    tag: e99c4412e786145a9d901aee2fa6480a4b0f6b7d
+    tag: 91e7acd8523fe27bc877ded735a5d65514c27a55
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
