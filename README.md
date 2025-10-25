@@ -131,7 +131,7 @@ The Terraform output `artifact_registry_repository` prints the fully-qualified A
 
 ## GitHub Actions Workflow
 
-The workflow builds frontend and backend images on pushes to `main`, pushes to GHCR, then opens a PR updating Helm values with the new image tag (`${{ github.sha }}`). When the PR is merged, Argo CD reconciles the chart update into the cluster.
+The workflow builds frontend and backend images on pushes to `main`, pushes them to GHCR, then commits updated Helm values directly to `main` (skipping automated changes when the actor is already the GitHub Actions bot). Argo CD detects the updated tag values and reconciles the chart.
 
 Secrets required:
 
