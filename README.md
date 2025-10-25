@@ -144,3 +144,4 @@ Secrets required:
 - Integrate image scanning (`trivy`, `grype`) and policy checks (`conftest`, `kube-score`).
 - Parameterize environments (dev/stage/prod) via Helm value overlays per namespace.
 - Add lifecycle/retention policies to the Terraform state bucket and enable bucket object versioning.
+
