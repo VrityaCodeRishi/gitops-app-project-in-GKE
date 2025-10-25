@@ -52,7 +52,7 @@ Render or install locally with:
 ```bash
 helm dependency update helm/gitops-demo  # noop, kept for future use
 helm install gitops-demo helm/gitops-demo \
-  --set frontend.image.repository="ghcr.io/YOUR_ORG/gitops-demo-frontend" \
+  --set frontend.image.repository="ghcr.io/your_org/gitops-demo-frontend" \
   --set frontend.image.tag="dev" \
   --set backend.image.repository="ghcr.io/YOUR_ORG/gitops-demo-backend" \
   --set backend.image.tag="dev"
