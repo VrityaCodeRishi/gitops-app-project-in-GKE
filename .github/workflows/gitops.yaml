@@ -14,8 +14,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  FRONTEND_IMAGE_NAME: ${{ toLower(format('{0}/gitops-demo-frontend', github.repository_owner)) }}
-  BACKEND_IMAGE_NAME: ${{ toLower(format('{0}/gitops-demo-backend', github.repository_owner)) }}
 
 jobs:
   lint:
@@ -42,6 +40,13 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare image coordinates
+        id: image_meta
+        run: |
+          owner=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          echo "owner=$owner" >> "$GITHUB_OUTPUT"
+          echo "frontend=${{ env.REGISTRY }}/$owner/gitops-demo-frontend" >> "$GITHUB_OUTPUT"
+          echo "backend=${{ env.REGISTRY }}/$owner/gitops-demo-backend" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -56,8 +61,8 @@ jobs:
           context: apps/frontend
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
-            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+            ${{ steps.image_meta.outputs.frontend }}:${{ github.sha }}
+            ${{ steps.image_meta.outputs.frontend }}:latest
       - name: Build and push backend image
         id: build-backend
         uses: docker/build-push-action@v5
@@ -65,8 +70,8 @@ jobs:
           context: apps/backend
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
-            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+            ${{ steps.image_meta.outputs.backend }}:${{ github.sha }}
+            ${{ steps.image_meta.outputs.backend }}:latest
       - name: Install yq
         if: github.ref == 'refs/heads/main'
         run: |
@@ -75,14 +80,11 @@ jobs:
       - name: Update Helm values with new image tags
         if: github.ref == 'refs/heads/main'
         env:
-          REGISTRY: ${{ env.REGISTRY }}
-          FRONTEND_IMAGE_NAME: ${{ env.FRONTEND_IMAGE_NAME }}
-          BACKEND_IMAGE_NAME: ${{ env.BACKEND_IMAGE_NAME }}
           GIT_SHA: ${{ github.sha }}
         run: |
-          yq eval ".frontend.image.repository = \"${REGISTRY}/${FRONTEND_IMAGE_NAME}\"" -i helm/gitops-demo/values.yaml
+          yq eval ".frontend.image.repository = \"${{ steps.image_meta.outputs.frontend }}\"" -i helm/gitops-demo/values.yaml
           yq eval ".frontend.image.tag = \"${GIT_SHA}\"" -i helm/gitops-demo/values.yaml
-          yq eval ".backend.image.repository = \"${REGISTRY}/${BACKEND_IMAGE_NAME}\"" -i helm/gitops-demo/values.yaml
+          yq eval ".backend.image.repository = \"${{ steps.image_meta.outputs.backend }}\"" -i helm/gitops-demo/values.yaml
           yq eval ".backend.image.tag = \"${GIT_SHA}\"" -i helm/gitops-demo/values.yaml
       - name: Create GitOps update pull request
         if: github.ref == 'refs/heads/main'
