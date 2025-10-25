@@ -46,7 +46,7 @@ postgres:
   storage:
     size: 1Gi
     className: ""
-    subPath: ""
+    subPath: "pgdata"
   service:
     port: 5432
   resources: {}
