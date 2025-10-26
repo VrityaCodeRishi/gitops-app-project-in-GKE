@@ -1,6 +1,13 @@
 kube-prometheus-stack:
   fullnameOverride: monitoring-stack
   namespaceOverride: ""
+  crds:
+    enabled: true
+    upgradeJob:
+      enabled: true
+      annotations:
+        argocd.argoproj.io/hook: PreSync
+        argocd.argoproj.io/hook-delete-policy: HookSucceeded
   prometheus:
     prometheusSpec:
       scrapeInterval: 30s
