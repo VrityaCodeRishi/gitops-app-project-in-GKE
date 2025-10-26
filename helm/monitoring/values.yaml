@@ -96,18 +96,12 @@ alloy:
         loki.source.kubernetes "pods" {
           targets    = discovery.kubernetes.pods.targets
           forward_to = [loki.process.pods.receiver]
-          labels = {
-            cluster = env("CLUSTER_NAME")
-          }
+          labels = { cluster = env("CLUSTER_NAME") }
         }
 
         loki.process "pods" {
           stage {
-            labels {
-              values = {
-                job = "kubernetes-logs"
-              }
-            }
+            labels { values = { job = "kubernetes-logs" } }
           }
           forward_to = [loki.write.default.receiver]
         }
