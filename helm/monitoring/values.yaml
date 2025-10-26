@@ -100,10 +100,7 @@ alloy:
 
         loki.process "pods" {
           stage.static_labels {
-            values = {
-              cluster = env("CLUSTER_NAME")
-              job     = "kubernetes-logs"
-            }
+            values = { cluster = env("CLUSTER_NAME"), job = "kubernetes-logs" }
           }
           forward_to = [loki.write.default.receiver]
         }
