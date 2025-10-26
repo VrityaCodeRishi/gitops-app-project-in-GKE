@@ -1,0 +1,117 @@
+kube-prometheus-stack:
+  fullnameOverride: monitoring-stack
+  namespaceOverride: ""
+  prometheus:
+    prometheusSpec:
+      scrapeInterval: 30s
+      evaluationInterval: 30s
+      serviceMonitorSelector: {}
+      serviceMonitorNamespaceSelector: {}
+      podMonitorSelector: {}
+      podMonitorNamespaceSelector: {}
+      ruleSelector: {}
+      ruleNamespaceSelector: {}
+  alertmanager:
+    enabled: false
+  grafana:
+    enabled: true
+    service:
+      type: ClusterIP
+      port: 80
+    adminUser: admin
+    adminPassword: gitops-demo
+    ingress:
+      enabled: false
+    sidecar:
+      dashboards:
+        enabled: true
+      datasources:
+        enabled: true
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://monitoring-loki:3100
+        editable: true
+      - name: Prometheus
+        type: prometheus
+        url: http://monitoring-stack-kube-p-prometheus:9090
+        access: proxy
+        editable: true
+  kubeEtcd:
+    enabled: false
+  kubeControllerManager:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  kubeProxy:
+    enabled: false
+  nodeExporter:
+    enabled: true
+  kubeStateMetrics:
+    enabled: true
+
+loki-stack:
+  fullnameOverride: monitoring-loki
+  loki:
+    persistence:
+      enabled: true
+      size: 10Gi
+    config:
+      table_manager:
+        retention_deletes_enabled: false
+        retention_period: 0s
+  promtail:
+    enabled: false
+  fluent-bit:
+    enabled: false
+  grafana:
+    enabled: false
+
+alloy:
+  fullnameOverride: monitoring-alloy
+  alloy:
+    stabilityLevel: "public-preview"
+    extraEnv:
+      - name: CLUSTER_NAME
+        value: gitops-demo
+    configMap:
+      create: true
+      content: |
+        logging {
+          level = "info"
+          format = "logfmt"
+        }
+
+        discovery.kubernetes "pods" {
+          role = "pod"
+        }
+
+        loki.write "default" {
+          endpoint {
+            url = "http://monitoring-loki:3100/loki/api/v1/push"
+          }
+        }
+
+        loki.source.kubernetes "pods" {
+          targets    = discovery.kubernetes.pods.targets
+          forward_to = [loki.process.pods.receiver]
+          labels = {
+            cluster = env("CLUSTER_NAME")
+          }
+        }
+
+        loki.process "pods" {
+          stage {
+            labels {
+              values = {
+                job = "kubernetes-logs"
+              }
+            }
+          }
+          forward_to = [loki.write.default.receiver]
+        }
+  controller:
+    type: daemonset
+  serviceAccount:
+    create: true

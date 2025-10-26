@@ -12,7 +12,7 @@ resource "kubernetes_manifest" "gitops_application" {
     )
   )
 
-  depends_on = [helm_release.argocd]
+  depends_on = [time_sleep.wait_for_argocd_crds]
 }
 
 resource "kubernetes_manifest" "monitoring_application" {
@@ -31,5 +31,5 @@ resource "kubernetes_manifest" "monitoring_application" {
     )
   )
 
-  depends_on = [helm_release.argocd]
+  depends_on = [time_sleep.wait_for_argocd_crds]
 }

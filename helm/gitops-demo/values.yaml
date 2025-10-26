@@ -37,6 +37,11 @@ backend:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+  monitoring:
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      labels: {}
 postgres:
   enabled: true
   image:

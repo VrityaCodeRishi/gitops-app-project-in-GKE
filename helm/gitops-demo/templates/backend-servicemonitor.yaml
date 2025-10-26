@@ -1,0 +1,23 @@
+{{- if and .Values.backend.monitoring.serviceMonitor.enabled (eq .Values.backend.service.type "ClusterIP") }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "gitops-demo.fullname" . }}-backend
+  labels:
+    {{- include "gitops-demo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+    {{- with .Values.backend.monitoring.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "gitops-demo.fullname" . }}-backend
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.backend.monitoring.serviceMonitor.interval }}
+{{- end }}

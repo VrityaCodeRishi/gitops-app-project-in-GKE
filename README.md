@@ -8,8 +8,10 @@ This repository demonstrates GitOps-driven delivery of a multi-tier web applicat
 - `apps/backend/` – Node.js/Express API that talks to PostgreSQL.
 - `docker-compose.yaml` – Local development stack.
 - `helm/gitops-demo/` – Helm chart bundling frontend, backend, and database workloads.
-- `infra/terraform/templates/` – Terraform templates used to generate manifests (Argo CD Application).
-- `infra/terraform/` – Terraform configuration for provisioning a minimal GKE cluster.
+- `helm/monitoring/` – Monitoring stack (Prometheus, Loki, Grafana Alloy) packaged for GitOps deployment.
+- `infra/terraform-cluster/` – Terraform module that provisions the GKE cluster and Artifact Registry.
+- `infra/terraform-apps/` – Terraform module that installs Argo CD and registers GitOps applications.
+- `infra/env/` – Terragrunt configurations orchestrating cluster/app modules.
 - `.github/workflows/gitops.yaml` – CI workflow that builds/pushes container images and opens a PR with Helm value updates.
 
 ## Local Development
@@ -44,6 +46,7 @@ The chart under `helm/gitops-demo` deploys the complete stack. Key values:
 - `frontend.image.*` – Container image for the UI.
 - `backend.image.*` – Container image for the API.
 - `backend.database.*` – Database connection secret controls.
+- `backend.monitoring.*` – Flags for enabling the ServiceMonitor that exposes `/metrics`.
 - `postgres.*` – PostgreSQL statefulset configuration.
 - `ingress.*` – Host and paths (`/` → frontend, `/api` → backend).
 
@@ -58,76 +61,67 @@ helm install gitops-demo helm/gitops-demo \
   --set backend.image.tag="dev"
 ```
 
-## Terraform – GKE Bootstrap
+## Terraform & Terragrunt
 
-Terraform in `infra/terraform` provisions:
+Provisioning is split into two Terraform modules orchestrated by Terragrunt:
 
-1. GKE API enablement.
-2. A single-zone GKE cluster (`remove_default_node_pool = true`).
-3. A managed node pool with a single `e2-standard-4` node.
-4. An Artifact Registry (Docker) repository for container images.
-5. An Argo CD control plane and a GitOps `Application` that points back to this repository.
+1. `terraform-cluster` – enables APIs, creates the Artifact Registry repo, and provisions the GKE cluster/node pool.
+2. `terraform-apps` – installs Argo CD via Helm.
+3. `terraform-gitops` – registers the GitOps applications (app + monitoring) once Argo CD CRDs are present.
+
+Terragrunt handles ordering (cluster first, then apps) and remote state layouts.
 
 ### Usage
 
 ```bash
-cd infra/terraform
+cd infra/env/default
 
-# Provide project and authentication (assumes application-default creds)
+# Authenticate with Google Cloud (assumes application-default credentials)
 export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/application_default_credentials.json"
 
-cat > terraform.tfvars <<EOT
-project_id   = "your-gcp-project"
-region       = "us-central1"
-zones        = ["us-central1-a"]
-cluster_name = "gitops-demo"
-gitops_repo_url = "https://github.com/YOUR_ORG/gitops-demo.git"
-EOT
+# Run both stacks (cluster first, then apps)
+terragrunt run init
+terragrunt run apply
 
-# Remote state is configured to use the GCS bucket `gs://gitops-project-tf-state`.
-# Ensure that bucket (and the `gitops-demo/terraform-state` prefix) exists before initializing.
-terraform init
-terraform plan
-terraform apply
-```
+# Destroy everything when done
+terragrunt run destroy
 
-Fetch cluster credentials:
-
-```bash
-$(terraform output -raw kubeconfig)
+# Fetch kubeconfig command from the cluster stack
+terragrunt run --terragrunt-working-dir env/default/cluster output -raw kubeconfig
 ```
 
 ### Notes
 
 - Requires Terraform >=1.13.0 (tested with 1.13.4) and Google provider ~> 6.0.
 - Defaults use the `default` VPC/subnet; override `network` and `subnetwork` for production setups.
-- Configure Google Cloud auth before running Terraform (`gcloud auth login` and `gcloud auth application-default login`).
-- Consider enabling Workload Identity and hardened node configs for real environments.
-- To use a different Terraform state bucket, edit `infra/terraform/versions.tf` and update the `backend "gcs"` block.
+- Configure Google Cloud auth before running Terragrunt (`gcloud auth login` and `gcloud auth application-default login`).
+- To use a different Terraform state bucket, edit `infra/terragrunt.hcl` and adjust the `remote_state` settings.
+- Toggle monitoring by setting `enable_monitoring = false` in `infra/env/default/gitops/terragrunt.hcl` inputs if you want to skip Prometheus/Loki/Grafana Alloy.
 
 ## Argo CD
 
-Terraform installs Argo CD via the official Helm chart (`helm_release.argocd`) once the cluster is ready. Customize the deployment by setting values in `infra/terraform/terraform.tfvars`:
+The `terraform-apps` module installs Argo CD via Helm (customize chart options in `infra/env/default/apps/terragrunt.hcl`). The `terraform-gitops` module applies the Argo CD `Application` resources; tweak the repo path or monitoring toggle in `infra/env/default/gitops/terragrunt.hcl`.
 
-- `argocd_namespace` – Target namespace (default `argocd`).
-- `argocd_chart_version` – Pin a specific chart release (leave `null` to track the latest available).
-- `argocd_server_service_type` – Service type for the Argo CD API/server (`ClusterIP`, `LoadBalancer`, etc.).
-- `argocd_image_repository` / `argocd_image_tag` – Override the Argo CD controller image. Leave unset to let the chart pull its latest defaults.
-- `argocd_additional_values` – Extra YAML documents merged into the Helm chart values for advanced tuning.
-- `gitops_repo_url` – Git repository Argo CD will sync (defaults to `https://github.com/VrityaCodeRishi/gitops-app-project-in-GKE.git`).
-- `gitops_repo_revision` – Branch/tag/commit to track (default `main`).
-- `artifact_registry_location` / `artifact_registry_repository` – Where Terraform creates the Artifact Registry Docker repo.
-
-After `terraform apply`, use the outputs/commands above to authenticate with the cluster, retrieve the initial admin password, and (optionally) port-forward the UI:
+Once Terragrunt finishes, port-forward the UI and grab the initial password:
 
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 kubectl -n argocd port-forward svc/argocd-server 8443:443
 ```
 
-Terraform creates the Argo CD Application resource automatically (see `infra/terraform/argocd_app.tf`), so once the workflow merges new Helm values, Argo CD reconciles the chart without manual steps.
+### Monitoring Stack
 
-The Terraform output `artifact_registry_repository` prints the fully-qualified Artifact Registry hostname (`<region>-docker.pkg.dev/<project>/<repo>`). Use that value when retagging images or updating CI workflows if you choose to push images to Artifact Registry instead of GHCR.
+With `enable_monitoring = true`, the apps module provisions a second Argo CD Application (`monitoring`) that deploys `helm/monitoring`. This chart wraps:
+
+- `kube-prometheus-stack` for Prometheus, Alertmanager (disabled by default), Grafana, node exporter, and kube-state-metrics.
+- `loki-stack` for log aggregation (Promtail disabled in favour of Alloy).
+- `grafana/alloy` running as a DaemonSet to ship Kubernetes container logs into Loki.
+
+Key behaviors:
+
+- The backend now exposes Prometheus metrics at `/metrics` (ported through port 8080). The Helm chart ships a `ServiceMonitor` so `kube-prometheus-stack` scrapes it automatically.
+- Grafana is available inside the cluster via the `monitoring-stack-grafana` service (`port-forward`: `kubectl -n monitoring port-forward svc/monitoring-stack-grafana 3000:80`). Default credentials are `admin / gitops-demo`.
+- Loki is reachable inside the cluster at `http://monitoring-loki:3100`. Grafana is pre-configured with Prometheus and Loki data sources, and Alloy automatically streams Kubernetes pod logs into Loki.
 
 ## GitHub Actions Workflow
 
@@ -137,10 +131,3 @@ Secrets required:
 
 - None for GHCR when using the default `GITHUB_TOKEN`.
 - Add any additional registry credentials if you switch registries.
-
-## Next Steps / Enhancements
-
-- Add automated tests (unit/integration) for the backend and frontend.
-- Integrate image scanning (`trivy`, `grype`) and policy checks (`conftest`, `kube-score`).
-- Parameterize environments (dev/stage/prod) via Helm value overlays per namespace.
-- Add lifecycle/retention policies to the Terraform state bucket and enable bucket object versioning.

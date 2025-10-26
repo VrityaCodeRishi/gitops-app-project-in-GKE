@@ -1,36 +1,3 @@
-locals {
-  argocd_image_settings = merge(
-    var.argocd_image_repository != null && trimspace(var.argocd_image_repository) != "" ? {
-      repository = var.argocd_image_repository
-    } : {},
-    var.argocd_image_tag != null && trimspace(var.argocd_image_tag) != "" ? {
-      tag = var.argocd_image_tag
-    } : {}
-  )
-
-  argocd_base_values = merge(
-    {
-      server = {
-        service = {
-          type = var.argocd_server_service_type
-        }
-      }
-    },
-    length(local.argocd_image_settings) > 0 ? {
-      global = {
-        image = local.argocd_image_settings
-      }
-    } : {}
-  )
-
-  argocd_values = concat(
-    [
-      yamlencode(local.argocd_base_values)
-    ],
-    var.argocd_additional_values
-  )
-}
-
 resource "google_project_service" "compute" {
   project = var.project_id
   service = "compute.googleapis.com"
@@ -125,20 +92,4 @@ resource "google_container_node_pool" "primary_nodes" {
   node_locations = var.zones
 
   depends_on = [google_container_cluster.primary]
-}
-
-resource "helm_release" "argocd" {
-  provider = helm.gke
-
-  name             = "argocd"
-  repository       = "https://argoproj.github.io/argo-helm"
-  chart            = "argo-cd"
-  version          = var.argocd_chart_version
-  namespace        = var.argocd_namespace
-  create_namespace = true
-  values           = local.argocd_values
-
-  depends_on = [
-    google_container_node_pool.primary_nodes
-  ]
 }
