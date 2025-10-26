@@ -34,17 +34,6 @@ kube-prometheus-stack:
         enabled: true
       datasources:
         enabled: true
-    additionalDataSources:
-      - name: Loki
-        type: loki
-        access: proxy
-        url: http://monitoring-loki:3100
-        editable: true
-      - name: Prometheus
-        type: prometheus
-        url: http://monitoring-stack-kube-p-prometheus:9090
-        access: proxy
-        editable: true
   kubeEtcd:
     enabled: false
   kubeControllerManager:
@@ -61,6 +50,7 @@ kube-prometheus-stack:
 loki-stack:
   fullnameOverride: monitoring-loki
   loki:
+    isDefault: false
     persistence:
       enabled: true
       size: 10Gi
